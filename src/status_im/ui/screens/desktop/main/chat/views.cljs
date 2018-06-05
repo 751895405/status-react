@@ -32,7 +32,10 @@
         (when (and group-chat (not public?))
           [icons/icon :icons/group-chat])
         [react/text {:style styles/toolbar-chat-name}
-         chat-name]]
+         chat-name]
+        [react/touchable-highlight
+         {:on-press #(re-frame/dispatch [:remove-chat-and-navigate-home chat-id])}
+         [icons/icon :icons/delete]]]
        (when pending?
          [react/touchable-highlight
           {:on-press #(re-frame/dispatch [:add-pending-contact chat-id])}
