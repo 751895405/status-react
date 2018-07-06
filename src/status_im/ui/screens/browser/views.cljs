@@ -3,7 +3,6 @@
                    [status-im.utils.views :as views])
   (:require [cljs.reader :as reader]
             [re-frame.core :as re-frame]
-            [status-im.models.browser-history :as browser-history]
             [status-im.ui.components.react :as react]
             [status-im.ui.screens.browser.styles :as styles]
             [status-im.ui.components.status-bar.view :as status-bar]
@@ -17,7 +16,8 @@
             [status-im.i18n :as i18n]
             [status-im.utils.ethereum.core :as ethereum]
             [status-im.ui.components.toolbar.actions :as actions]
-            [status-im.ui.components.tooltip.views :as tooltip]))
+            [status-im.ui.components.tooltip.views :as tooltip]
+            [status-im.models.browser :as model]))
 
 (views/defview toolbar-content-dapp [name]
   (views/letsubs [dapp [:get-dapp-by-name name]]
@@ -64,69 +64,74 @@
    [react/view styles/web-view-loading
     [components/activity-indicator {:animating true}]]))
 
-(defn on-navigation-change [event browser]
-  (let [{:strs [url loading]} (js->clj event)]
-    (when (not= "about:blank" url)
-      (re-frame/dispatch [:update-browser-on-nav-change browser url loading]))))
+(defn on-bridge-message [message browser]
+  (let [{:strs [type navState]} (js->clj (.parse js/JSON message))
+        {:strs [url]} navState]
+    (when (= type "navStateChange")
+      (when (not= "about:blank" url)
+        (re-frame/dispatch [:update-browser-on-nav-change browser url false])))))
 
 (defn get-inject-js [url]
   (let [domain-name (nth (re-find #"^\w+://(www\.)?([^/:]+)" url) 2)]
     (get (:inject-js browser-config) domain-name)))
 
 (views/defview browser []
-  (views/letsubs [webview (atom nil)
+  (views/letsubs [webview    (atom nil)
                   {:keys [address]} [:get-current-account]
-                  {:keys [dapp? url browser-id name] :as browser} [:get-current-browser]
-                  {:keys [can-go-back? can-go-forward? error?]} [:get :browser/options]
-                  rpc-url [:get :rpc-url]
+                  {:keys [dapp? browser-id name history-index history] :as browser} [:get-current-browser]
+                  {:keys [error?]} [:get :browser/options]
+                  rpc-url    [:get :rpc-url]
                   network-id [:get-network-id]]
-    [react/keyboard-avoiding-view styles/browser
-     [status-bar/status-bar]
-     [toolbar.view/toolbar {}
-      [toolbar.view/nav-button-with-count
-       (actions/close (fn []
-                        (.sendToBridge @webview "navigate-to-blank")
-                        (re-frame/dispatch [:navigate-back])
-                        (when error?
-                          (re-frame/dispatch [:remove-browser browser-id]))))]
-      (if dapp?
-        [toolbar-content-dapp name]
-        [toolbar-content browser])]
-     (if url
-       [components.webview-bridge/webview-bridge
-        {:ref                                   #(reset! webview %)
-         :source                                {:uri url}
-         :java-script-enabled                   true
-         :bounces                               false
-         :local-storage-enabled                 true
-         :start-in-loading-state                true
-         :render-error                          web-view-error
-         :render-loading                        web-view-loading
-         :on-navigation-state-change            #(on-navigation-change % browser)
-         :on-load                               #(re-frame/dispatch [:update-browser-options {:error? false}])
-         :on-error                              #(re-frame/dispatch [:update-browser-options {:error? true}])
-         :injected-on-start-loading-java-script (str js-res/web3
-                                                     (get-inject-js url)
-                                                     (js-res/web3-init
-                                                      rpc-url
-                                                      (ethereum/normalized-address address)
-                                                      (str network-id)))
-         :injected-java-script                  js-res/webview-js}]
-       [react/view styles/background
-        [react/text (i18n/label :t/enter-dapp-url)]])
-     [react/view styles/toolbar
-      [react/touchable-highlight {:on-press            #(browser-history/back browser)
-                                  :disabled            (not (browser-history/can-go-back? browser))
-                                  :style               (if (not (browser-history/can-go-back? browser)) styles/disabled-button)
-                                  :accessibility-label :previou-page-button}
-       [react/view
-        [vector-icons/icon :icons/arrow-left]]]
-      [react/touchable-highlight {:on-press            #(browser-history/forward browser)
-                                  :disabled            (not (browser-history/can-go-forward? browser))
-                                  :style               (merge styles/forward-button (if (not (browser-history/can-go-forward? browser)) styles/disabled-button))
-                                  :accessibility-label :next-page-button}
-       [react/view
-        [vector-icons/icon :icons/arrow-right]]]]
-     (when-not dapp?
-       [tooltip/bottom-tooltip-info
-        (i18n/label :t/browser-warning)])]))
+    (let [can-go-back?    (model/can-go-back? browser)
+          can-go-forward? (model/can-go-forward? browser)]
+      [react/keyboard-avoiding-view styles/browser
+       [status-bar/status-bar]
+       [toolbar.view/toolbar {}
+        [toolbar.view/nav-button-with-count
+         (actions/close (fn []
+                          (when @webview
+                            (.sendToBridge @webview "navigate-to-blank"))
+                          (re-frame/dispatch [:navigate-back])
+                          (when error?
+                            (re-frame/dispatch [:remove-browser browser-id]))))]
+        (if dapp?
+          [toolbar-content-dapp name]
+          [toolbar-content browser])]
+       (let [url (when (and history-index history)
+                   (nth history history-index))]
+         [components.webview-bridge/webview-bridge
+          {:ref                                   #(reset! webview %)
+           :source                                {:uri url}
+           :java-script-enabled                   true
+           :bounces                               false
+           :local-storage-enabled                 true
+           :start-in-loading-state                true
+           :render-error                          web-view-error
+           :render-loading                        web-view-loading
+           :on-bridge-message                     #(on-bridge-message % browser)
+           :on-load                               #(re-frame/dispatch [:update-browser-options {:error? false}])
+           :on-error                              #(re-frame/dispatch [:update-browser-options {:error? true}])
+           :injected-on-start-loading-java-script (str js-res/web3
+                                                       (get-inject-js url)
+                                                       (js-res/web3-init
+                                                        rpc-url
+                                                        (ethereum/normalized-address address)
+                                                        (str network-id)))
+           :injected-java-script                  js-res/webview-js}])
+       [react/view styles/toolbar
+        [react/touchable-highlight {:on-press            #(re-frame/dispatch [:browser-nav-back browser])
+                                    :disabled            (not can-go-back?)
+                                    :style               (when-not can-go-back? styles/disabled-button)
+                                    :accessibility-label :previou-page-button}
+         [react/view
+          [vector-icons/icon :icons/arrow-left]]]
+        [react/touchable-highlight {:on-press            #(re-frame/dispatch [:browser-nav-forward browser])
+                                    :disabled            (not can-go-forward?)
+                                    :style               (merge styles/forward-button
+                                                                (when-not can-go-forward? styles/disabled-button))
+                                    :accessibility-label :next-page-button}
+         [react/view
+          [vector-icons/icon :icons/arrow-right]]]]
+       (when-not dapp?
+         [tooltip/bottom-tooltip-info
+          (i18n/label :t/browser-warning)])])))
