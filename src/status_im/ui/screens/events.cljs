@@ -6,7 +6,7 @@
             status-im.network.events
             [status-im.transport.handlers :as transport.handlers]
             status-im.protocol.handlers
-            status-im.ui.screens.accounts.events
+            [status-im.ui.screens.accounts.events :as accounts.events]
             status-im.ui.screens.accounts.login.events
             status-im.ui.screens.accounts.recover.events
             [status-im.ui.screens.contacts.events :as contacts]
@@ -254,6 +254,18 @@
                            (re-frame/dispatch [:initialize-app encryption-key]))
    :on-accept           handle-reset-data})
 
+(defn initialize-views [{{:accounts/keys [accounts] :as db} :db}]
+  {:db (if (empty? accounts)
+         (assoc db :view-id :intro :navigation-stack (list :intro))
+         (let [{:keys [address photo-path name]} (first (sort-by :last-sign-in > (vals accounts)))]
+           (-> db
+               (assoc :view-id :login
+                      :navigation-stack (list :login))
+               (update :accounts/login assoc
+                       :address address
+                       :photo-path photo-path
+                       :name name))))})
+
 (defn initialize-db
   "Initialize db to the initial state"
   [{{:universal-links/keys [url]
@@ -299,12 +311,14 @@
 ;; DB has been decrypted, load accounts, initialize geth, etc
 (handlers/register-handler-fx
  :after-decryption
- (fn [_ _]
-   {:dispatch-n
-    [[:load-accounts]
-     [:initialize-views]
-     [:listen-to-network-status]
-     [:initialize-geth]]}))
+ [(re-frame/inject-cofx :data-store/get-all-accounts)]
+ (fn [cofx _]
+   (handlers-macro/merge-fx cofx
+                            {:dispatch-n
+                             [[:listen-to-network-status]
+                              [:initialize-geth]]}
+                            (accounts.events/load-accounts)
+                            (initialize-views))))
 
 (handlers/register-handler-fx
  :logout
@@ -361,20 +375,6 @@
                          [:show-mainnet-is-default-alert]
                          (universal-links/stored-url-event cofx)]
                   (seq events-after) (into events-after))}))
-
-(handlers/register-handler-fx
- :initialize-views
- (fn [{{:accounts/keys [accounts] :as db} :db} _]
-   {:db (if (empty? accounts)
-          (assoc db :view-id :intro :navigation-stack (list :intro))
-          (let [{:keys [address photo-path name]} (first (sort-by :last-sign-in > (vals accounts)))]
-            (-> db
-                (assoc :view-id :login
-                       :navigation-stack (list :login))
-                (update :accounts/login assoc
-                        :address address
-                        :photo-path photo-path
-                        :name name))))}))
 
 (handlers/register-handler-fx
  :initialize-geth

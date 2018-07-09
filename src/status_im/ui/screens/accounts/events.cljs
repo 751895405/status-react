@@ -88,15 +88,12 @@
        (-> (add-account db account)
            (assoc :dispatch [:login-account normalized-address password]))))))
 
-(handlers/register-handler-fx
- :load-accounts
- [(re-frame/inject-cofx :data-store/get-all-accounts)]
- (fn [{:keys [db all-accounts]} _]
-   (let [accounts (->> all-accounts
-                       (map (fn [{:keys [address] :as account}]
-                              [address account]))
-                       (into {}))]
-     {:db (assoc db :accounts/accounts accounts)})))
+(defn load-accounts [{:keys [db all-accounts]}]
+  (let [accounts (->> all-accounts
+                      (map (fn [{:keys [address] :as account}]
+                             [address account]))
+                      (into {}))]
+    {:db (assoc db :accounts/accounts accounts)}))
 
 (defn update-settings
   ([settings cofx] (update-settings settings nil cofx))
