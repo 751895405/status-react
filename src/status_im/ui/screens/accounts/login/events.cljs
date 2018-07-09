@@ -24,18 +24,14 @@
  (fn []
    (status/clear-web-data)))
 
-(defn change-account [address encryption-key]
-  (data-store/change-account address
-                             encryption-key))
+(defn change-account! [address encryption-key]
+  (data-store/change-account address encryption-key)
+  (re-frame/dispatch [:change-account-handler address]))
 
 (defn handle-change-account [address]
-  (.. (keychain/get-encryption-key)
-      (catch (fn [{:keys [_ key]}]
-               ;; We try to decrypt anyway once, as the user has already agreed
-               ;; to move forward
-               (or key "")))
-      (then (partial change-account address))
-      (then (fn [_] (re-frame/dispatch [:change-account-handler address])))
+  ;; No matter what is the keychain we use, as checks are done on decrypting base
+  (.. (keychain/safe-get-encryption-key)
+      (then (partial change-account! address))
       (catch (fn [error]
                ;; If all else fails we fallback to showing initial error
                (re-frame/dispatch [:initialize-app "" :decryption-failed])))))

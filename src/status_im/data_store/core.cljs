@@ -1,6 +1,7 @@
 (ns status-im.data-store.core
   (:require [cljs.core.async :as async]
             [re-frame.core :as re-frame]
+            [taoensso.timbre :as log]
             [status-im.data-store.realm.core :as data-source]
             status-im.data-store.chats
             status-im.data-store.messages
@@ -17,6 +18,7 @@
     (data-source/open-base-realm encryption-key)))
 
 (defn change-account [address encryption-key]
+  (log/debug "changing account to: " address)
   (data-source/change-account address encryption-key))
 
 (defn- perform-transactions [raw-transactions realm]
