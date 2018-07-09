@@ -11,6 +11,7 @@ cmake_minimum_required(VERSION 2.8.11)
 set(APP_NAME StatusIm)
 set(REACT_BUILD_STATIC_LIB ON)
 
+set(EXTERNAL_MODULES_DIR node_modules/react-native-i18n/desktop;node_modules/react-native-config/desktop;node_modules/react-native-fs/desktop;node_modules/react-native-http-bridge/desktop;node_modules/react-native-webview-bridge/desktop;node_modules/react-native-keychain/desktop;node_modules/react-native-securerandom/desktop;modules/react-native-status/desktop;modules/react-native-desktop-notification/desktop)
 message(STATUS "EXTERNAL_MODULES_DIR: ${EXTERNAL_MODULES_DIR}")
 
 foreach(external_module ${EXTERNAL_MODULES_DIR})

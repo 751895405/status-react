@@ -7,6 +7,7 @@
             [status-im.utils.utils :as utils]
             [status-im.utils.platform :as platform]
             [status-im.i18n :as i18n]
+            [taoensso.timbre :as log]
             [status-im.react-native.js-dependencies :as js-dependencies]))
 
 (defn get-react-property [name]
@@ -65,6 +66,8 @@
 (def dimensions (.-Dimensions js-dependencies/react-native))
 (def keyboard (.-Keyboard js-dependencies/react-native))
 (def linking (.-Linking js-dependencies/react-native))
+(def desktop-notification (.-DesktopNotification (.-NativeModules js-dependencies/react-native)))
+(log/debug "!!!!!!!!!!!!!!!! desktop-notification initiatilzed with: " desktop-notification)
 
 (def slider (get-class "Slider"))
 ;; Accessor methods for React Components

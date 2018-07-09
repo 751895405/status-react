@@ -12,6 +12,7 @@
             [status-im.utils.handlers :as handlers]
             [status-im.utils.handlers-macro :as handlers-macro]
             [taoensso.timbre :as log]
+            [status-im.ui.components.react :as react]
             [status-im.transport.message.v1.protocol :as protocol]))
 
 (defn update-last-received-from-inbox
@@ -30,6 +31,9 @@
       (try
         (handlers-macro/merge-fx
          (assoc cofx :js-obj js-message)
+         ;(log/debug "!!! New message received: " status-message)
+         ;(.sendNotification react/desktop-notification)
+         ;(#(.sendNotification react/desktop-notification))
          (message/receive status-message (or chat-id sig) sig)
          (update-last-received-from-inbox now-in-s timestamp ttl))
         (catch :default e nil))))) ; ignore unknown message types
