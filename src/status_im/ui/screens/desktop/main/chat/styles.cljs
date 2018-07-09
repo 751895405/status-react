@@ -62,24 +62,20 @@
    :margin-right 8})
 
 (def toolbar-chat-view
-  {:align-items     :center
-   :padding         11
-   :justify-content :center})
+  {:align-items        :center
+   :padding-vertical   17
+   :padding-horizontal 24
+   :flex-direction     :row
+   :justify-content    :space-between})
 
 (def toolbar-chat-name
-  {:font-size   16
-   :color       :black
+  {:font-size   14
+   :color       colors/black
    :font-weight "600"})
 
-(def add-contact
-  {:background-color :white
-   :border-radius    6
-   :margin-top       3
-   :padding          4})
-
 (def add-contact-text
-  {:font-size 14
-   :color     colors/gray})
+  {:font-size 12
+   :color     colors/blue})
 
 (def message-text
   {:font-size 14})
@@ -97,3 +93,16 @@
 (def chat-view
   {:flex             1
    :background-color :white})
+
+(def chat-icon
+  {:width         34
+   :border-radius 34
+   :height        34
+   :margin-right  12})
+
+(defn chat-title-and-type [pending?]
+  {:justify-content (if pending? :flex-start :center)})
+
+(def chat-title
+  {:flex-direction :row
+   :margin-bottom  4})
