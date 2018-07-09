@@ -14,7 +14,7 @@
             status-im.ui.screens.group.events
             [status-im.ui.screens.navigation :as navigation]
             [status-im.utils.universal-links.core :as universal-links]
-
+            [status-im.utils.dimensions :as dimensions]
             status-im.utils.universal-links.events
             status-im.ui.screens.add-new.new-chat.navigation
             status-im.ui.screens.network-settings.events
@@ -185,6 +185,11 @@
    (status/get-device-UUID #(re-frame/dispatch [:set :device-UUID %]))))
 
 (re-frame/reg-fx
+ ::listen-to-window-dimensions-change
+ (fn []
+   (dimensions/add-event-listener)))
+
+(re-frame/reg-fx
  ::get-fcm-token-fx
  (fn [_]
    (notifications/get-fcm-token)))
@@ -252,6 +257,7 @@
      {:show-confirmation (handle-invalid-key-parameters encryption-key)}
      {::init-device-UUID nil
       ::testfairy-alert  nil
+      ::listen-to-window-dimensions-change nil
       :dispatch-n        [[:initialize-db encryption-key]
                           [:load-accounts]
                           [:initialize-views]
@@ -496,3 +502,8 @@
  :hide-tab-bar
  (fn [db _]
    (assoc db :tab-bar-visible? false)))
+
+(handlers/register-handler-db
+ :update-window-dimensions
+ (fn [db [_ dimensions]]
+   (assoc db :dimensions/window (dimensions/window dimensions))))
