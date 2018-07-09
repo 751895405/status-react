@@ -139,6 +139,8 @@
    (doseq [call calls]
      (http-get call))))
 
+;; Try to decrypt the database, move on if successful otherwise go back to
+;; initial state
 (re-frame/reg-fx
  ::init-store
  (fn [encryption-key]
@@ -150,20 +152,10 @@
        (log/warn "Could not decrypt database" error)
        (re-frame/dispatch [:initialize-app encryption-key :decryption-failed])))))
 
-(defn move-to-internal-storage [config]
-  (status/move-to-internal-storage
-   #(status/start-node config)))
-
 (re-frame/reg-fx
  :initialize-geth-fx
  (fn [config]
-    ;;TODO get rid of this, because we don't need this anymore
-   (status/should-move-to-internal-storage?
-    (fn [should-move?]
-      (if should-move?
-        (re-frame/dispatch [:request-permissions {:permissions [:read-external-storage]
-                                                  :on-allowed  #(move-to-internal-storage config)}])
-        (status/start-node (types/clj->json config)))))))
+   (status/start-node (types/clj->json config))))
 
 (re-frame/reg-fx
  ::status-module-initialized-fx
@@ -230,15 +222,15 @@
  (fn [db [_ path v]]
    (assoc-in db path v)))
 
-(handlers/register-handler-fx
- :initialize-keychain
- (fn [_ _]
-   {:get-encryption-key [:initialize-app]}))
-
 (defn- reset-keychain []
   (.. (keychain/reset)
       (then
        #(re-frame/dispatch [:initialize-keychain]))))
+
+(defn- handle-reset-data  []
+  (.. (realm/delete-realms)
+      (then reset-keychain)
+      (catch reset-keychain)))
 
 (defn handle-invalid-key-parameters [encryption-key]
   {:title               (i18n/label :invalid-key-title)
@@ -249,10 +241,7 @@
    :on-cancel           #(do
                            (log/warn "initializing app with invalid key")
                            (re-frame/dispatch [:initialize-app encryption-key]))
-   :on-accept (fn []
-                (.. (realm/delete-realms)
-                    (then reset-keychain)
-                    (catch reset-keychain)))})
+   :on-accept           handle-reset-data})
 
 (defn handle-decryption-failed-parameters [encryption-key]
   {:title               (i18n/label :decryption-failed-title)
@@ -263,18 +252,15 @@
    :on-cancel           #(do
                            (log/warn "initializing app with same key after decryption failed")
                            (re-frame/dispatch [:initialize-app encryption-key]))
-   :on-accept (fn []
-                (.. (realm/delete-realms)
-                    (then reset-keychain)
-                    (catch reset-keychain)))})
+   :on-accept           handle-reset-data})
 
-(defn initialize-db [encryption-key
-                     {{:universal-links/keys [url]
-                       :keys                 [status-module-initialized? status-node-started?
-                                              network-status network peers-count peers-summary device-UUID]
-                       :or                   {network (get app-db :network)}} :db}]
-  {::init-store encryption-key
-   :db          (assoc app-db
+(defn initialize-db
+  "Initialize db to the initial state"
+  [{{:universal-links/keys [url]
+     :keys                 [status-module-initialized? status-node-started?
+                            network-status network peers-count peers-summary device-UUID]
+     :or                   {network (get app-db :network)}} :db}]
+  {:db          (assoc app-db
                        :contacts/contacts {}
                        :network-status network-status
                        :peers-count (or peers-count 0)
@@ -285,15 +271,14 @@
                        :universal-links/url url
                        :device-UUID device-UUID)})
 
+;; Entrypoint, fetches the key from the keychain and initialize the app
 (handlers/register-handler-fx
- :after-decryption
+ :initialize-keychain
  (fn [_ _]
-   {:dispatch-n
-    [[:load-accounts]
-     [:initialize-views]
-     [:listen-to-network-status]
-     [:initialize-geth]]}))
+   {:get-encryption-key [:initialize-app]}))
 
+;; Check the key is valid, shows options if not, otherwise continues loading
+;; the database
 (handlers/register-handler-fx
  :initialize-app
  (fn [cofx [_ encryption-key error]]
@@ -307,8 +292,19 @@
      :else
      (handlers-macro/merge-fx cofx
                               {::init-device-UUID nil
+                               ::init-store       encryption-key
                                ::testfairy-alert  nil}
-                              (initialize-db encryption-key)))))
+                              (initialize-db)))))
+
+;; DB has been decrypted, load accounts, initialize geth, etc
+(handlers/register-handler-fx
+ :after-decryption
+ (fn [_ _]
+   {:dispatch-n
+    [[:load-accounts]
+     [:initialize-views]
+     [:listen-to-network-status]
+     [:initialize-geth]]}))
 
 (handlers/register-handler-fx
  :logout

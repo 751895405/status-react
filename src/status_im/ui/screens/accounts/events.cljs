@@ -95,21 +95,8 @@
    (let [accounts (->> all-accounts
                        (map (fn [{:keys [address] :as account}]
                               [address account]))
-                       (into {}))
-         ;;workaround for realm bug, migrating account v4
-         events   (mapv #(when (empty? (:networks %)) [:account-update-networks (:address %)]) (vals accounts))]
-     (merge
-      {:db (assoc db :accounts/accounts accounts)}
-      (when-not (empty? events)
-        {:dispatch-n events})))))
-
-(handlers/register-handler-fx
- :account-update-networks
- (fn [{{:accounts/keys [accounts] :networks/keys [networks] :as db} :db} [_ id]]
-   (let [current-account (get accounts id)
-         new-account     (assoc current-account :networks networks)]
-     {:db                 (assoc-in db [:accounts/accounts id] new-account)
-      :data-store/base-tx [(accounts-store/save-account-tx new-account)]})))
+                       (into {}))]
+     {:db (assoc db :accounts/accounts accounts)})))
 
 (defn update-settings
   ([settings cofx] (update-settings settings nil cofx))
