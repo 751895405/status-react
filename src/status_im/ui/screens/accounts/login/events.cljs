@@ -1,6 +1,6 @@
 (ns status-im.ui.screens.accounts.login.events
   (:require status-im.ui.screens.accounts.login.navigation
-            [re-frame.core :refer [dispatch reg-fx]]
+            [re-frame.core :as re-frame]
             [status-im.utils.handlers :refer [register-handler-db register-handler-fx]]
             [taoensso.timbre :as log]
             [status-im.utils.types :refer [json->clj]]
@@ -12,34 +12,38 @@
 
 ;;;; FX
 
-(reg-fx ::stop-node (fn [] (status/stop-node)))
+(re-frame/reg-fx ::stop-node (fn [] (status/stop-node)))
 
-(reg-fx
+(re-frame/reg-fx
  ::login
  (fn [[address password]]
-   (status/login address password #(dispatch [:login-handler % address]))))
+   (status/login address password #(re-frame/dispatch [:login-handler % address]))))
 
-(reg-fx
+(re-frame/reg-fx
  ::clear-web-data
  (fn []
    (status/clear-web-data)))
 
 (defn change-account [address encryption-key]
   (data-store/change-account address
-                             encryption-key
-                             #(dispatch [:change-account-handler % address])))
+                             encryption-key))
 
-(reg-fx
+(defn handle-change-account [address]
+  (.. (keychain/get-encryption-key)
+      (catch (fn [{:keys [_ key]}]
+               ;; We try to decrypt anyway once, as the user has already agreed
+               ;; to move forward
+               (or key "")))
+      (then (partial change-account address))
+      (then (fn [_] (re-frame/dispatch [:change-account-handler address])))
+      (catch (fn [error]
+               ;; If all else fails we fallback to showing initial error
+               (re-frame/dispatch [:initialize-app "" :decryption-failed])))))
+
+(re-frame/reg-fx
  ::change-account
  (fn [[address]]
-   ;; if we don't add delay when running app without status-go
-   ;; "null is not an object (evaluating 'realm.schema')" error appears
-   (.. (keychain/get-encryption-key)
-       (then (partial change-account address))
-       (catch (fn [{:keys [error key]}]
-                ;; no need of further error handling as already taken care
-                ;; when starting the app
-                (change-account address (or key "")))))))
+   (handle-change-account address)))
 
 ;;;; Handlers
 
@@ -149,12 +153,10 @@
 
 (register-handler-fx
  :change-account-handler
- (fn [{{:keys [view-id] :as db} :db} [_ error address]]
-   (if (nil? error)
-     {:db       (cond-> (dissoc db :accounts/login)
-                  (= view-id :create-account)
-                  (assoc-in [:accounts/create :step] :enter-name))
-      :dispatch [:initialize-account address
-                 (when (not= view-id :create-account)
-                   [[:navigate-to-clean :home]])]}
-     (log/debug "Error changing acount: " error))))
+ (fn [{{:keys [view-id] :as db} :db} [_ address]]
+   {:db       (cond-> (dissoc db :accounts/login)
+                (= view-id :create-account)
+                (assoc-in [:accounts/create :step] :enter-name))
+    :dispatch [:initialize-account address
+               (when (not= view-id :create-account)
+                 [[:navigate-to-clean :home]])]}))

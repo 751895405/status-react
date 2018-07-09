@@ -142,7 +142,13 @@
 (re-frame/reg-fx
  ::init-store
  (fn [encryption-key]
-   (data-store/init encryption-key)))
+   (try
+     (do
+       (data-store/init encryption-key)
+       (re-frame/dispatch [:after-decryption]))
+     (catch js/Error error
+       (log/warn "Could not decrypt database" error)
+       (re-frame/dispatch [:initialize-app encryption-key :decryption-failed])))))
 
 (defn move-to-internal-storage [config]
   (status/move-to-internal-storage
@@ -248,32 +254,19 @@
                     (then reset-keychain)
                     (catch reset-keychain)))})
 
-(handlers/register-handler-fx
- :initialize-app
- (fn [_ [_ encryption-key error]]
-   (if (= :invalid-key error)
-     {:show-confirmation (handle-invalid-key-parameters encryption-key)}
-     {::init-device-UUID nil
-      ::testfairy-alert  nil
-      :dispatch-n        [[:initialize-db encryption-key]
-                          [:load-accounts]
-                          [:initialize-views]
-                          [:listen-to-network-status]
-                          [:initialize-geth]]})))
-
-(handlers/register-handler-fx
- :logout
- (fn [{:keys [db] :as cofx} [this-event encryption-key]]
-   (if encryption-key
-     (let [{:transport/keys [chats]} db]
-       (handlers-macro/merge-fx cofx
-                                {:dispatch-n [[:initialize-db encryption-key]
-                                              [:load-accounts]
-                                              [:listen-to-network-status]
-                                              [:navigate-to :accounts]]}
-                                (navigation/navigate-to-clean nil)
-                                (transport/stop-whisper)))
-     {:get-encryption-key [this-event]})))
+(defn handle-decryption-failed-parameters [encryption-key]
+  {:title               (i18n/label :decryption-failed-title)
+   :content             (i18n/label :decryption-failed-content)
+   :confirm-button-text (i18n/label :decryption-failed-confirm)
+   ;; On cancel we initialize the app with the same key, in case the error was
+   ;; not related/fs error
+   :on-cancel           #(do
+                           (log/warn "initializing app with same key after decryption failed")
+                           (re-frame/dispatch [:initialize-app encryption-key]))
+   :on-accept (fn []
+                (.. (realm/delete-realms)
+                    (then reset-keychain)
+                    (catch reset-keychain)))})
 
 (defn initialize-db [encryption-key
                      {{:universal-links/keys [url]
@@ -293,9 +286,38 @@
                        :device-UUID device-UUID)})
 
 (handlers/register-handler-fx
- :initialize-db
- (fn [cofx [_ encryption-key]]
-   (initialize-db encryption-key cofx)))
+ :after-decryption
+ (fn [_ _]
+   {:dispatch-n
+    [[:load-accounts]
+     [:initialize-views]
+     [:listen-to-network-status]
+     [:initialize-geth]]}))
+
+(handlers/register-handler-fx
+ :initialize-app
+ (fn [cofx [_ encryption-key error]]
+   (cond
+     (= :invalid-key error)
+     {:show-confirmation (handle-invalid-key-parameters encryption-key)}
+
+     (= :decryption-failed error)
+     {:show-confirmation (handle-decryption-failed-parameters encryption-key)}
+
+     :else
+     (handlers-macro/merge-fx cofx
+                              {::init-device-UUID nil
+                               ::testfairy-alert  nil}
+                              (initialize-db encryption-key)))))
+
+(handlers/register-handler-fx
+ :logout
+ (fn [{:keys [db] :as cofx} _]
+   (let [{:transport/keys [chats]} db]
+     (handlers-macro/merge-fx cofx
+                              {:dispatch [:initialize-keychain]}
+                              (navigation/navigate-to-clean nil)
+                              (transport/stop-whisper)))))
 
 (handlers/register-handler-db
  :initialize-account-db

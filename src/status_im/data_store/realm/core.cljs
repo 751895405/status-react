@@ -101,10 +101,9 @@
   (reset! base-realm (open-migrated-realm (.-defaultPath rn-dependencies/realm) base/schemas encryption-key))
   (log/debug "Created @base-realm"))
 
-(defn change-account [address encryption-key handler]
+(defn change-account [address encryption-key]
   (close-account-realm)
-  (reset! account-realm (open-migrated-realm address account/schemas encryption-key))
-  (handler nil))
+  (reset! account-realm (open-migrated-realm address account/schemas encryption-key)))
 
 (declare realm-obj->clj)
 
