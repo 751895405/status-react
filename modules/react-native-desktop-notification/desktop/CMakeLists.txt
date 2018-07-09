@@ -26,7 +26,7 @@ set(SnoreNotify_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SnoreNotify_ep-prefix/src/Sno
 set(SnoreNotify_INCLUDE_DIR ${SnoreNotify_PREFIX}/include)
 set(SnoreNotify_SHARED_LIB
     ${SnoreNotify_PREFIX}/lib${SnoreNotify_LIBPATHSUFFIX}/${CMAKE_SHARED_LIBRARY_PREFIX}snore-qt5${CMAKE_SHARED_LIBRARY_SUFFIX})
-set(SnoreNotify_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${SnoreNotify_PREFIX} -DBUILD_daemon=OFF -DBUILD_settings=OFF -DBUILD_snoresend=OFF)
+set(SnoreNotify_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${SnoreNotify_PREFIX} -DBUILD_daemon=OFF -DBUILD_settings=OFF -DBUILD_snoresend=OFF -DCMAKE_MACOSX_RPATH=TRUE)
 
 ExternalProject_Add(SnoreNotify_ep
   GIT_REPOSITORY https://github.com/status-im/snorenotify.git
