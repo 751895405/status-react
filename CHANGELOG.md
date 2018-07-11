@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - iPad support. Status is now displayed at full native resolution on iPad's
-- fixed Sign in: Cannot paste text within password field [#3931]
+- Persist browser history
 
 ### Fixed
+- Fixed Sign in: Cannot paste text within password field [#3931]
 - Fixed chat message layout for right-to-left languages
 - Fixed parsing of messages containing multiple dots (elipsis)
-
+- Fixed Webview: Screen cut off when using ERC dEX DApp [#3131]
+ 
 ## [0.9.22] - 2018-07-09
 ### Added
 - Added Farsi public #status channel
@@ -41,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New help links on the Profile tab. Read our Beta FAQ, file a bug, or suggest and vote on features.
 - Performance improvements when fetching old messages
 - Added 5 new default public chats for our friends speaking Korean, Chinese, Japanese, Russian and Spanish.
+- Allow user to remove custom avatar
 
 ### Fixed
 - Prevented empty commands from being sent in chat
@@ -48,3 +51,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fixed an issue where contacts names may not be shown
 - Removed log files from release builds
 - Fixed an issue with transactions when navigating back
+

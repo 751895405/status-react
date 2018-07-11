@@ -52,10 +52,10 @@
 (handlers/register-handler-fx
  :my-profile/remove-current-photo
  (fn [{:keys [db]}]
-  {:db       (-> db
-                    (assoc-in [:my-profile/profile :photo-path]
-                              (identicon/identicon (:current-public-key db)))
-                    (assoc :my-profile/editing? true))}))
+   {:db       (-> db
+                  (assoc-in [:my-profile/profile :photo-path]
+                            (identicon/identicon (:current-public-key db)))
+                  (assoc :my-profile/editing? true))}))
 
 (handlers/register-handler-fx
  :my-profile/update-picture

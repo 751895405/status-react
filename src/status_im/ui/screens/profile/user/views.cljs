@@ -46,18 +46,6 @@
                                                    :icon                :icons/ok
                                                    :icon-opts           {:color colors/blue}
                                                    :accessibility-label :done-button}]])}))
-(def profile-icon-options-ext
-  [{:label  (i18n/label :t/image-remove-current)
-    :action #(re-frame/dispatch [:my-profile/remove-current-photo])}
-   {:label (i18n/label :t/image-source-gallery)
-     :action #(re-frame/dispatch [:my-profile/update-picture])}
-   {:label  (i18n/label :t/image-source-make-photo)
-    :action (fn []
-              (re-frame/dispatch [:request-permissions {:permissions [:camera :write-external-storage]
-                                                        :on-allowed  #(re-frame/dispatch [:navigate-to :profile-photo-capture])
-                                                        :on-denied   #(utils/show-popup (i18n/label :t/error)
-                                                                                        (i18n/label :t/camera-access-error))}]))}])
-
 (def profile-icon-options
   [{:label  (i18n/label :t/image-source-gallery)
     :action #(re-frame/dispatch [:my-profile/update-picture])}
@@ -70,6 +58,10 @@
                                                                         #(utils/show-popup (i18n/label :t/error)
                                                                                            (i18n/label :t/camera-access-error))
                                                                         50))}]))}])
+
+(defn- profile-icon-options-ext []
+  (conj profile-icon-options {:label  (i18n/label :t/image-remove-current)
+                              :action #(re-frame/dispatch [:my-profile/remove-current-photo])}))
 
 (defn qr-viewer-toolbar [label value]
   [toolbar/toolbar {}
@@ -218,24 +210,16 @@
          [my-profile-toolbar])
        [react/scroll-view {:ref                          #(reset! scroll %)
                            :keyboard-should-persist-taps :handled}
-        (when (= (identicon/identicon public-key) photo-path) 
         [react/view profile.components.styles/profile-form
          [profile.components/profile-header
           {:contact              current-account
            :edited-contact       changed-account
            :editing?             editing?
            :allow-icon-change?   true
-           :options              profile-icon-options
-           :on-change-text-event :my-profile/update-name}]])
-        (when (not= (identicon/identicon public-key) photo-path) 
-        [react/view profile.components.styles/profile-form
-         [profile.components/profile-header
-          {:contact              current-account
-           :edited-contact       changed-account
-           :editing?             editing?
-           :allow-icon-change?   true
-           :options              profile-icon-options-ext
-           :on-change-text-event :my-profile/update-name}]])
+           :options              (if (not= (identicon/identicon public-key) photo-path)
+                                   (profile-icon-options-ext)
+                                   profile-icon-options)
+           :on-change-text-event :my-profile/update-name}]]
         [react/view action-button.styles/actions-list
          [share-contact-code current-account public-key]]
         [react/view styles/my-profile-info-container
