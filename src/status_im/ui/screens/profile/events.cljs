@@ -10,6 +10,7 @@
             [status-im.utils.handlers :as handlers]
             [status-im.utils.handlers-macro :as handlers-macro]
             [status-im.utils.image-processing :refer [img->base64]]
+            [status-im.utils.identicon :as identicon]
             [taoensso.timbre :as log]))
 
 (re-frame/reg-fx
@@ -47,6 +48,14 @@
    {:db (-> db
             (assoc-in [:my-profile/profile :valid-name?] (valid-name? name))
             (assoc-in [:my-profile/profile :name] name))}))
+
+(handlers/register-handler-fx
+ :my-profile/remove-current-photo
+ (fn [{:keys [db]}]
+  {:db       (-> db
+                    (assoc-in [:my-profile/profile :photo-path]
+                              (identicon/identicon (:current-public-key db)))
+                    (assoc :my-profile/editing? true))}))
 
 (handlers/register-handler-fx
  :my-profile/update-picture
