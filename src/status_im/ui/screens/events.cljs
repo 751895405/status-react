@@ -13,7 +13,6 @@
             status-im.ui.screens.group.chat-settings.events
             status-im.ui.screens.group.events
             [status-im.ui.screens.navigation :as navigation]
-            [status-im.utils.universal-links.core :as universal-links]
             status-im.utils.universal-links.events
             [status-im.chat.commands.core :as commands]
             status-im.ui.screens.add-new.new-chat.navigation
@@ -144,13 +143,11 @@
 (re-frame/reg-fx
  ::init-store
  (fn [encryption-key]
-   (try
-     (do
-       (data-store/init encryption-key)
-       (re-frame/dispatch [:after-decryption]))
-     (catch js/Error error
-       (log/warn "Could not decrypt database" error)
-       (re-frame/dispatch [:initialize-app encryption-key :decryption-failed])))))
+   (.. (data-store/init encryption-key)
+       (then #(re-frame/dispatch [:after-decryption]))
+       (catch (fn [error]
+                (log/warn "Could not decrypt database" error)
+                (re-frame/dispatch [:initialize-app encryption-key :decryption-failed]))))))
 
 (re-frame/reg-fx
  :initialize-geth-fx
@@ -375,8 +372,7 @@
                          [:update-transactions]
                          [:get-fcm-token]
                          [:update-sign-in-time]
-                         [:show-mainnet-is-default-alert]
-                         (universal-links/stored-url-event cofx)]
+                         [:show-mainnet-is-default-alert]]
                   (seq events-after) (into events-after))}))
 
 (handlers/register-handler-fx
