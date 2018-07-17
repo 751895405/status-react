@@ -58,9 +58,9 @@
                                                                         #(utils/show-popup (i18n/label :t/error)
                                                                                            (i18n/label :t/camera-access-error))
                                                                         50))}]))}
-  (when (not= (identicon/identicon public-key) photo-path)
-    {:label  (i18n/label :t/image-remove-current)
-    :action #(re-frame/dispatch [:my-profile/remove-current-photo])})])
+   (when (not= (identicon/identicon public-key) photo-path)
+     {:label  (i18n/label :t/image-remove-current)
+      :action #(re-frame/dispatch [:my-profile/remove-current-photo])})])
 
 (defn qr-viewer-toolbar [label value]
   [toolbar/toolbar {}
