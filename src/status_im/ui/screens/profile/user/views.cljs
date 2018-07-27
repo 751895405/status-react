@@ -46,7 +46,7 @@
                                                    :icon                :icons/ok
                                                    :icon-opts           {:color colors/blue}
                                                    :accessibility-label :done-button}]])}))
-(defn- profile-icon-options [public-key photo-path]
+(def profile-icon-options
   [{:label  (i18n/label :t/image-source-gallery)
     :action #(re-frame/dispatch [:my-profile/update-picture])}
    {:label  (i18n/label :t/image-source-make-photo)
@@ -57,10 +57,11 @@
                                                                        (utils/set-timeout
                                                                         #(utils/show-popup (i18n/label :t/error)
                                                                                            (i18n/label :t/camera-access-error))
-                                                                        50))}]))}
-   (when (not= (identicon/identicon public-key) photo-path)
-     {:label  (i18n/label :t/image-remove-current)
-      :action #(re-frame/dispatch [:my-profile/remove-current-photo])})])
+                                                                        50))}]))}])
+
+(defn- profile-icon-options-ext []
+  (conj profile-icon-options {:label  (i18n/label :t/image-remove-current)
+                              :action #(re-frame/dispatch [:my-profile/remove-current-photo])}))
 
 (defn qr-viewer-toolbar [label value]
   [toolbar/toolbar {}
@@ -215,7 +216,9 @@
            :edited-contact       changed-account
            :editing?             editing?
            :allow-icon-change?   true
-           :options              (profile-icon-options public-key photo-path)
+           :options              (if (not= (identicon/identicon public-key) photo-path)
+                                   (profile-icon-options-ext)
+                                   profile-icon-options)
            :on-change-text-event :my-profile/update-name}]]
         [react/view action-button.styles/actions-list
          [share-contact-code current-account public-key]]
