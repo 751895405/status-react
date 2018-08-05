@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New help links on the Profile tab. Read our Beta FAQ, file a bug, or suggest and vote on features.
 - Performance improvements when fetching old messages
 - Added 5 new default public chats for our friends speaking Korean, Chinese, Japanese, Russian and Spanish.
+- Allow user to remove custom avatar
 
 ### Fixed
 - Prevented empty commands from being sent in chat
@@ -50,3 +51,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fixed an issue where contacts names may not be shown
 - Removed log files from release builds
 - Fixed an issue with transactions when navigating back
+
