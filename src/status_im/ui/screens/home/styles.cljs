@@ -149,9 +149,7 @@
    :margin-horizontal 34})
 
 (def no-chats-text
-  {:font-size      14
-   :line-height    21
-   :letter-spacing -0.2
+  {:line-height    21
    :text-align     :center
    :color          colors/gray})
 
